@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
-    "start": "npm run lint && babel-node src/index.js",
+    "start": "babel-node src/index.js",
     "build": "npm run lint && babel src --out-dir build --copy-files",
     "lint": "eslint src"
   },
