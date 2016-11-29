@@ -1,0 +1,14 @@
+{
+  "parser": "babel-eslint",
+  "env": {
+    "node": true
+  },
+  "extends": "eslint-config-airbnb-base",
+  "rules": {
+    "indent": ["error", 4],
+    "no-console": 0,
+    "linebreak-style": 0,
+    "max-len": ["error", 121, { "ignoreStrings": true }],
+    "class-methods-use-this": 0
+  }
+}
