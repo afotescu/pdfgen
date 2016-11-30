@@ -1,4 +1,4 @@
 export default {
-    connectionString: 'postgres://postgres:hrpmGra8meya4@77.89.240.10:5432/hrpm-plus-auth',
+    connectionString: 'postgres://user:psw@localhost:5432/qq',
     archive: './pdfs',
 };
