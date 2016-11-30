@@ -3,17 +3,16 @@
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
-    "start": "babel-node src/index.js",
+    "start": "nodemon --exec \"babel-node src/index.js\"",
     "build": "npm run lint && babel src --out-dir build --copy-files",
     "lint": "eslint src"
   },
   "license": "ISC",
   "dependencies": {
+    "bluebird": "^3.4.1",
     "hummus": "^1.0.65",
-    "pg-promise": "^5.2.6",
     "mkdirp": "^0.5.1",
-    "html-pdf": "^2.1.0",
-    "bluebird": "^3.4.1"
+    "pg-promise": "^5.2.6"
   },
   "devDependencies": {
     "babel-cli": "^6.16.0",

@@ -5,7 +5,7 @@
   },
   "extends": "eslint-config-airbnb-base",
   "rules": {
-    "indent": ["error", 4],
+    "indent": ["error", 4, { "SwitchCase": 1 }],
     "no-console": 0,
     "linebreak-style": 0,
     "max-len": ["error", 121, { "ignoreStrings": true }],
