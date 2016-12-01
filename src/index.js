@@ -6,6 +6,7 @@ import readline from 'readline';
 // import path from 'path';
 import Timer from './timer';
 import config from './config';
+import query from './sql';
 
 let db = new Pg({ promiseLib: Promise });
 db = db(config.connectionString);
@@ -35,15 +36,15 @@ rl.on('line', (line) => {
 });
 // Main event which will check every second the database for tasks
 app.on('idle', () => {
-    console.log('Waiting for tasks...');
     const checkTasks = new Timer(() => {
         checkTasks.stop();
-        db.any('SELECT task_id FROM calc_tasks WHERE status = \'REPT\'')
-            .then((tasks) => {
-                if (tasks.length) {
-                    console.log(`Found ${tasks.length}. Processing data.`);
-                    return app.emit('resolveTask', tasks);
+        db.oneOrNone(query.checkTasks)
+            .then((task) => {
+                if (task) {
+                    console.log('Task found. Processing data.');
+                    return app.emit('processData', task.task_id);
                 }
+                console.log('Waiting for tasks...');
                 return checkTasks.start();
             })
             .catch((err) => {
@@ -54,14 +55,10 @@ app.on('idle', () => {
 });
 
 // Processing the tasks
-app.on('resolveTask', (tasks) => {
-    db.any('UPDATE calc_tasks SET status = \'COMP\' WHERE task_id = $1', [tasks[0].task_id])
-        .then(() => {
-            setTimeout(() => {
-                console.log('Finished current tasks.\n');
-                console.log('\n\n');
-                app.emit('idle');
-            }, 2000);
+app.on('processData', (task) => {
+    db.any(query.getConfigurationData, [task])
+        .then((data) => {
+            console.log(data);
         })
         .catch((err) => {
             console.log(err.message);
