@@ -2,11 +2,10 @@ import Promise from 'bluebird';
 import Pg from 'pg-promise';
 import { EventEmitter } from 'events';
 import readline from 'readline';
-// import hummus from 'hummus';
-// import path from 'path';
 import Timer from './timer';
 import config from './config';
 import query from './sql';
+import generate from './pdfGenerator';
 
 let db = new Pg({ promiseLib: Promise });
 db = db(config.connectionString);
@@ -56,9 +55,15 @@ app.on('idle', () => {
 
 // Processing the tasks
 app.on('processData', (task) => {
-    db.any(query.getConfigurationData, [task])
+    db.any('SELECT * FROM public.payslip_data_positioning')
         .then((data) => {
-            console.log(data);
+            console.time('100 pdfs generated in');
+
+            for(let i = 0; i < 100; i += 1){
+                generate(`standardCH${i}.pdf`, data);
+            }
+
+            console.timeEnd('100 pdfs generated in');
         })
         .catch((err) => {
             console.log(err.message);
