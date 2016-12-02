@@ -8,9 +8,9 @@ const transformation = {
     proportional: true,
 };
 
-const generatePDF = (name, data)  => {
+const generatePDF = (filePath, data)  => {
 
-    const pdfWriter = hummus.createWriter(path.join(__dirname, '../', './pdfs', name));
+    const pdfWriter = hummus.createWriter(path.join(filePath));
 
     const fonts = {
         normal: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Regular.ttf')),

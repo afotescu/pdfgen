@@ -1,4 +1,4 @@
 export default {
-    connectionString: 'postgres://usr:pswd@localhost:5432/db',
+    connectionString: 'postgres://postgres:1354200@localhost:5432/Test',
     archive: './pdfs',
 };

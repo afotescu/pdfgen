@@ -50,7 +50,7 @@ app.on('idle', () => {
                 if (task) {
                     console.log('Task found. Processing data.');
                     // return app.emit('processData', task.task_id);
-                    return app.emit('testAllData', task.task_id);
+                    return app.emit('processData', task);
                 }
                 console.log('Waiting for tasks...');
                 return checkTasks.start();
@@ -107,8 +107,8 @@ app.on('processData', (task) => {
             for (let i = 0; i < arrOfGeneralData.length; i += 1) {
                 arrOfPdfData.push(db.any(query.test,
                     [arrOfGeneralData[i].payslip_id, arrOfGeneralData[i].run_id, arrOfGeneralData[i].run_version,
-                        arrOfGeneralData[i].ee_id, arrOfGeneralData[i].le_id, arrOfGeneralData[i].payslip_layout_id],
-                        arrOfGeneralData[i].wc_id));
+                        arrOfGeneralData[i].ee_id, arrOfGeneralData[i].le_id, arrOfGeneralData[i].payslip_layout_id,
+                        arrOfGeneralData[i].wc_id]));
             }
             return Promise.all(arrOfPdfData);
         })
@@ -137,7 +137,7 @@ app.on('testAllData', (task) => {
             for (let i = 0; i < data.length; i += 1) {
                 db.any(query.test,
                     [data[i].payslip_id, data[i].run_id, data[i].run_version, data[i].ee_id, data[i].le_id,
-                        data[i].payslip_layout_id])
+                        data[i].payslip_layout_id, data[i].wc_id])
                     .then((result) => {
                         console.log('------------->', i);
                         generate(`test${i}.pdf`, result);
