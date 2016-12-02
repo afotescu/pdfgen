@@ -110,14 +110,16 @@ FROM address ad
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id 
 JOIN ee_contract ec ON ec.ee_id = ea.ee_id 
 JOIN calculation_output co ON co.contract_id = ec.contract_id
-WHERE (now() BETWEEN ea.from_date AND ea.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5
+WHERE (now() BETWEEN ea.from_date AND ea.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 
+AND ec.ee_id = $4 AND ec.le_id = $5
 )
 WHEN field = 'address_country' THEN (SELECT DISTINCT ad.address_country 
 FROM address ad 
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id
 JOIN ee_contract ec ON ec.ee_id = ea.ee_id 
 JOIN calculation_output co ON co.contract_id = ec.contract_id
-WHERE (now() BETWEEN ea.from_date AND ea.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5 
+WHERE (now() BETWEEN ea.from_date AND ea.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 
+AND ec.ee_id = $4 AND ec.le_id = $5 
 )
 WHEN field = 'periods_code' THEN (SELECT p.code FROM periods p JOIN payroll_runs pr ON pr.period_id = p.period_id
 WHERE pr.run_id = $2 AND pr.run_version = $3 AND pr.le_id = $5)
@@ -129,13 +131,17 @@ JOIN ee_banks eb ON eb.payroll_bank_id1 = b.bank_account_id
 JOIN ee_contract ec ON ec.le_id = eb.le_id AND ec.ee_id = eb.ee_id 
 JOIN payroll_runs pr ON ec.le_id = pr.le_id 
 JOIN calculation_output co ON co.contract_id = ec.contract_id
-WHERE (now() BETWEEN eb.from_date AND eb.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5 
+WHERE (now() BETWEEN eb.from_date AND eb.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 
+AND ec.ee_id = $4 AND ec.le_id = $5 
 LIMIT 1)
 WHEN (SELECT SUBSTRING(field, 1, 4)) = 'tag_' THEN (SELECT DISTINCT ptt.tag_translation FROM tags_translation ptt 
 JOIN ee_id_le eil ON eil.leg_language = ptt.language_id
 WHERE tag_id = (SELECT SUBSTRING(field, 5, length(field))::int) AND eil.ee_id = $4 AND eil.le_id = 1)
-WHEN field='wt_146' THEN (SELECT amount from calculation_output where wt_id = 146 AND payslip_id = $1 
-AND run_id = $2 AND run_version = $3)::text
+WHEN field='wt_146' THEN (SELECT to_char(SUM(co.amount), '999,999.' || repeat('9', pw.amount_format_decimals)) 
+from calculation_output co
+JOIN payslip_wt pw ON pw.wt_id = co.wt_id
+where co.wt_id = 146 AND co.payslip_id = $1
+AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )::text
 ELSE field
 END AS field, 
 position_x, position_y, null as position_y_start, font, alignment, size, type, position_x_end, position_y_end,
