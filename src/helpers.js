@@ -7,7 +7,22 @@ const getOptions = (size, font, color) => {
         size: parseFloat(size),
         font,
         color: 0x00,
-    }
+    };
 };
 
-export default {alignRight, getOptions};
+const leftpad = (str, len, ch) => {
+    let rCh = ch;
+    let rStr = String(str);
+    let i = -1;
+    if (!ch && ch !== 0) {
+        rCh = ' ';
+    }
+    const rLen = len - str.length;
+    while (rLen > i) {
+        rStr = rCh + rStr;
+        i += 1;
+    }
+    return rStr;
+};
+
+export default { alignRight, getOptions, leftpad };
