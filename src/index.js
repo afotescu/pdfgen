@@ -29,6 +29,9 @@ rl.on('line', (line) => {
         case 'uptime':
             console.log(new Date(1000 * process.uptime()).toISOString().substr(11, 8));
             break;
+        case 'test':
+            app.emit('testData');
+            break;
         case 'exit':
             console.log('Shutting down the application.');
             process.exit();
@@ -46,7 +49,8 @@ app.on('idle', () => {
             .then((task) => {
                 if (task) {
                     console.log('Task found. Processing data.');
-                    return app.emit('processData', task);
+                    // return app.emit('processData', task.task_id);
+                    return app.emit('testAllData', task.task_id);
                 }
                 console.log('Waiting for tasks...');
                 return checkTasks.start();
@@ -117,6 +121,47 @@ app.on('processData', (task) => {
         .then(() => db.none(writeToArchiveQuery))
         .then(() => {
             console.timeEnd('Done');
+        })
+        .catch((err) => {
+            console.log(err.message);
+            process.exit();
+        });
+});
+
+
+// Testing all data from the tasks
+app.on('testAllData', (task) => {
+    console.time('generated in');
+    db.any(query.getConfigurationData, [task])
+        .then((data) => {
+            for (let i = 0; i < data.length; i += 1) {
+                db.any(query.test,
+                    [data[i].payslip_id, data[i].run_id, data[i].run_version, data[i].ee_id, data[i].le_id,
+                        data[i].payslip_layout_id])
+                    .then((result) => {
+                        console.log('------------->', i);
+                        generate(`test${i}.pdf`, result);
+                    })
+                    .catch((err) => {
+                        console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', i);
+                        console.log(err.message);
+                    });
+            }
+            console.timeEnd('generated in');
+        })
+        .catch((err) => {
+            console.log(err.message);
+            process.exit();
+        });
+});
+
+// Test the data
+app.on('testData', (task) => {
+    console.time('generated in');
+    db.any(query.testFixed)
+        .then((results) => {
+            generate(`generate.pdf`, results);
+            console.timeEnd('generated in');
         })
         .catch((err) => {
             console.log(err.message);
