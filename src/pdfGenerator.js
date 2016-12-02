@@ -2,6 +2,12 @@ import hummus from 'hummus';
 import path from 'path';
 import helpers from './helpers';
 
+const transformation = {
+    width: 100,
+    height: 100,
+    proportional: true,
+};
+
 const generatePDF = (name, data)  => {
 
     const pdfWriter = hummus.createWriter(path.join(__dirname, '../', './pdfs', name));
@@ -44,7 +50,7 @@ const generatePDF = (name, data)  => {
                 }
                 data[i].position_y = data[i].position_y_start - rowCount;
             }
-            if(data[i].alignment === 'right') {
+            if(data[i].alignment === 'right' && data[i].position_x) {
                 content.writeText(
                     data[i].field,
                     helpers.alignRight(
@@ -52,7 +58,7 @@ const generatePDF = (name, data)  => {
                     Number(data[i].position_y),
                     helpers.getOptions(Number(data[i].size), fonts[data[i].font], data[i].color)
                 )
-            } else {
+            } else if(data[i].position_x){
                 content.writeText(
                     data[i].field,
                     data[i].position_x,
@@ -64,7 +70,8 @@ const generatePDF = (name, data)  => {
             content.drawImage(
                 Number(data[i].position_x),
                 Number(data[i].position_y),
-                path.join(__dirname, './templates', data[i].field)
+                path.join(__dirname, './templates', data[i].field),
+                { transformation }
             )
         } else if (data[i].type === 'line') {
             content.drawPath(
