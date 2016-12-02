@@ -19,7 +19,7 @@ JOIN payslip_layout_le pll ON pll.le_id = ec.le_id
 WHERE ct.task_id = $1
 ORDER BY payslip_id`,
     test: `SELECT * FROM (
-SELECT field, position_x, null as position_y, position_id,
+SELECT field, position_x, null as position_y, position_y_start,
 font, alignment, size, type, null as position_x_end, null as position_y_end, row_height, wt_sequence
   FROM (
 SELECT
@@ -93,54 +93,54 @@ UNION ALL
 SELECT
 CASE
 WHEN field = 'payslip_date' THEN TO_CHAR((SELECT payslip_date FROM payroll_runs WHERE run_id = $2 
-AND run_version = $3 AND le_id = 1), 'DD-MM-YYYY')
-WHEN field = 'ee_id_text' THEN (SELECT ee_id_text FROM ee_id_le WHERE ee_id = 3 AND le_id = 1)
-WHEN field = 'ss_id' THEN (SELECT ss_id FROM ee_id_universal_data WHERE ee_id = 3)
+AND run_version = $3 AND le_id = $5), 'DD-MM-YYYY')
+WHEN field = 'ee_id_text' THEN (SELECT ee_id_text FROM ee_id_le WHERE ee_id = $4 AND le_id = $5)
+WHEN field = 'ss_id' THEN (SELECT ss_id FROM ee_id_universal_data WHERE ee_id = $4)
 WHEN field = 'ee_name' THEN (SELECT CASE WHEN last_name2 IS NOT NULL THEN
                 last_name || ' ' || last_name2 || ', ' || first_name 
-                ELSE last_name || ' ' || first_name END FROM ee_id_universal_data WHERE ee_id = 3)
+                ELSE last_name || ' ' || first_name END FROM ee_id_universal_data WHERE ee_id = $4)
 WHEN field = 'address_line1_ee' THEN (SELECT DISTINCT ad.address_line1 FROM address ad 
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id 
 JOIN ee_contract ec ON ec.ee_id = ea.ee_id JOIN calculation_output co ON co.contract_id = ec.contract_id
-WHERE ec.ee_id = 3 AND ec.le_id = 1)
+WHERE (now() BETWEEN ea.from_date AND ea.to_date) AND ec.ee_id = 3 AND ec.le_id = $5)
 WHEN field = 'address_line1_le' THEN (SELECT DISTINCT ad.address_line1 FROM address ad 
-JOIN legal_entity le ON le.payslip_address_id = ad.address_id WHERE le_id = 1)
+JOIN legal_entity le ON le.payslip_address_id = ad.address_id WHERE le_id = $5)
 WHEN field = 'address_zip_city' THEN (SELECT DISTINCT ad.address_zip_code || ' ' || ad.address_city  
 FROM address ad 
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id 
 JOIN ee_contract ec ON ec.ee_id = ea.ee_id 
 JOIN calculation_output co ON co.contract_id = ec.contract_id
-WHERE co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = 3 AND ec.le_id = 1 
+WHERE (now() BETWEEN ea.from_date AND ea.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5
 )
 WHEN field = 'address_country' THEN (SELECT DISTINCT ad.address_country 
 FROM address ad 
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id
 JOIN ee_contract ec ON ec.ee_id = ea.ee_id 
 JOIN calculation_output co ON co.contract_id = ec.contract_id
-WHERE co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = 3 AND ec.le_id = 1 
+WHERE (now() BETWEEN ea.from_date AND ea.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5 
 )
 WHEN field = 'periods_code' THEN (SELECT p.code FROM periods p JOIN payroll_runs pr ON pr.period_id = p.period_id
-WHERE pr.run_id = $2 AND pr.run_version = $3 AND pr.le_id = 1)
+WHERE pr.run_id = $2 AND pr.run_version = $3 AND pr.le_id = $5)
 WHEN field = 'payment_date' THEN TO_CHAR((SELECT payment_date FROM payroll_runs WHERE run_id = $2 
-AND run_version = $3 AND le_id = 1), 'DD-MM-YYYY')
+AND run_version = $3 AND le_id = $5), 'DD-MM-YYYY')
 WHEN field = 'banks_bank_iban' THEN (SELECT DISTINCT b.bank || ' ' || b.iban
 FROM banks b  
 JOIN ee_banks eb ON eb.payroll_bank_id1 = b.bank_account_id 
 JOIN ee_contract ec ON ec.le_id = eb.le_id AND ec.ee_id = eb.ee_id 
 JOIN payroll_runs pr ON ec.le_id = pr.le_id 
 JOIN calculation_output co ON co.contract_id = ec.contract_id
-WHERE co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = 3 AND ec.le_id = 1 
+WHERE (now() BETWEEN eb.from_date AND eb.to_date) AND co.payslip_id = $1 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5 
 LIMIT 1)
 WHEN (SELECT SUBSTRING(field, 1, 4)) = 'tag_' THEN (SELECT DISTINCT ptt.tag_translation FROM tags_translation ptt 
 JOIN ee_id_le eil ON eil.leg_language = ptt.language_id
-WHERE tag_id = (SELECT SUBSTRING(field, 5, length(field))::int) AND eil.ee_id = 3 AND eil.le_id = 1)
+WHERE tag_id = (SELECT SUBSTRING(field, 5, length(field))::int) AND eil.ee_id = $4 AND eil.le_id = 1)
 WHEN field='wt_146' THEN (SELECT amount from calculation_output where wt_id = 146 AND payslip_id = $1 
 AND run_id = $2 AND run_version = $3)::text
 ELSE field
 END AS field, 
-position_x, position_y, null as position_id, font, alignment, size, type, position_x_end, position_y_end,
+position_x, position_y, null as position_y_start, font, alignment, size, type, position_x_end, position_y_end,
  null as row_height, null as wt_sequence
 FROM payslip_data_positioning WHERE payslip_layout_id = $6
 ) sa
-order by case when position_id is not null then wt_sequence else position_y end, position_x`,
+order by case when position_y_start is not null then wt_sequence else position_y end, position_x`,
 };

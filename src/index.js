@@ -55,6 +55,7 @@ app.on('idle', () => {
 
 // Processing the tasks
 app.on('processData', (task) => {
+    console.time('generated in');
     db.any(query.getConfigurationData, [task])
         .then((data) => {
             const arrOfPdfData = [];
@@ -66,7 +67,10 @@ app.on('processData', (task) => {
             return Promise.all(arrOfPdfData);
         })
         .then((results) => {
-            console.log(results);
+            for (let i = 0; i < results.length; i += 1) {
+                generate(`test${i}.pdf`, results[i]);
+            }
+            console.timeEnd('generated in');
         })
         .catch((err) => {
             console.log(err.message);

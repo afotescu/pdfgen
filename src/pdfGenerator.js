@@ -19,9 +19,9 @@ const generatePDF = (name, data)  => {
     let bold = false;
 
     for (let i = 0; i < data.length; i += 1) {
-        data[i].field = data[i].field.trim();
+        data[i].field = (data[i].field) ? data[i].field.trim() : '';
         if(data[i].type === 'text') {
-            if(!data[i].position_y && data[i].wt_position_y_start && data[i].row_height) {
+            if(!data[i].position_y && data[i].position_y_start && data[i].row_height) {
 
                 if(data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && !bold){
                     seqNumber = data[i].wt_sequence;
@@ -42,7 +42,7 @@ const generatePDF = (name, data)  => {
                 } else {
                     seqNumber = data[i].wt_sequence;
                 }
-                data[i].position_y = data[i].wt_position_y_start - rowCount;
+                data[i].position_y = data[i].position_y_start - rowCount;
             }
             if(data[i].alignment === 'right') {
                 content.writeText(
