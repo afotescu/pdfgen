@@ -7,15 +7,43 @@ const generatePDF = (name, data)  => {
     const pdfWriter = hummus.createWriter(path.join(__dirname, '../', './pdfs', name));
 
     const fonts = {
-        openSans: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Regular.ttf')),
-        openSansBold: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Bold.ttf')),
+        normal: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Regular.ttf')),
+        bold: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Bold.ttf')),
     };
 
     const page = pdfWriter.createPage(0, 0, 595, 842);
     const content = pdfWriter.startPageContentContext(page);
 
+    let rowCount = 0;
+    let seqNumber = 0;
+    let bold = false;
+
     for (let i = 0; i < data.length; i += 1) {
+        data[i].field = data[i].field.trim();
         if(data[i].type === 'text') {
+            if(!data[i].position_y && data[i].wt_position_y_start && data[i].row_height) {
+
+                if(data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && !bold){
+                    seqNumber = data[i].wt_sequence;
+                    rowCount += data[i].row_height;
+                    bold = true;
+                } else if (data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && bold){
+                    seqNumber = data[i].wt_sequence;
+                    rowCount += (2 * data[i].row_height);
+                    bold = false;
+                } else if (data[i].font !== 'bold' && data[i].wt_sequence !== seqNumber && bold){
+                    seqNumber = data[i].wt_sequence;
+                    rowCount += (2 * data[i].row_height);
+                    bold = false;
+                } else if (data[i].font !== 'bold' && data[i].wt_sequence !== seqNumber && !bold){
+                    seqNumber = data[i].wt_sequence;
+                    rowCount += data[i].row_height;
+                    bold = false;
+                } else {
+                    seqNumber = data[i].wt_sequence;
+                }
+                data[i].position_y = data[i].wt_position_y_start - rowCount;
+            }
             if(data[i].alignment === 'right') {
                 content.writeText(
                     data[i].field,

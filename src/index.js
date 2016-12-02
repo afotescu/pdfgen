@@ -55,15 +55,18 @@ app.on('idle', () => {
 
 // Processing the tasks
 app.on('processData', (task) => {
-    db.any('SELECT * FROM public.payslip_data_positioning')
+    db.any(query.test)
         .then((data) => {
-            console.time('100 pdfs generated in');
 
-            for(let i = 0; i < 100; i += 1){
-                generate(`standardCH${i}.pdf`, data);
-            }
+            // console.time('300 pdfs generated in');
+            // for(let i = 0; i < 300; i += 1){
+            //     generate(`standardCH${i}.pdf`, data);
+            // }
+            // console.timeEnd('300 pdfs generated in');
 
-            console.timeEnd('100 pdfs generated in');
+            console.time('1 pdf generated in');
+            generate('generate.pdf', data);
+            console.timeEnd('1 pdf generated in');
         })
         .catch((err) => {
             console.log(err.message);
