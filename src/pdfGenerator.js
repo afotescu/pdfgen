@@ -28,7 +28,6 @@ const generatePDF = (name, data)  => {
         data[i].field = (data[i].field) ? data[i].field.trim() : '';
         if(data[i].type === 'text') {
             if(!data[i].position_y && data[i].position_y_start && data[i].row_height) {
-
                 if(data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && !bold){
                     seqNumber = data[i].wt_sequence;
                     rowCount += data[i].row_height;
