@@ -48,29 +48,29 @@ app.on('idle', () => {
             })
             .catch((err) => {
                 console.log(err.message);
-                app.emit('idle');
+                process.exit();
             });
     }, 1000);
 });
 
 // Processing the tasks
 app.on('processData', (task) => {
-    db.any(query.test)
+    db.any(query.getConfigurationData, [task])
         .then((data) => {
-
-            // console.time('300 pdfs generated in');
-            // for(let i = 0; i < 300; i += 1){
-            //     generate(`standardCH${i}.pdf`, data);
-            // }
-            // console.timeEnd('300 pdfs generated in');
-
-            console.time('1 pdf generated in');
-            generate('generate.pdf', data);
-            console.timeEnd('1 pdf generated in');
+            const arrOfPdfData = [];
+            for (let i = 0; i < data.length; i += 1) {
+                arrOfPdfData.push(db.any(query.test,
+                    [data[i].payslip_id, data[i].run_id, data[i].run_version, data[i].ee_id, data[i].le_id,
+                        data[i].payslip_layout_id]));
+            }
+            return Promise.all(arrOfPdfData);
+        })
+        .then((results) => {
+            console.log(results);
         })
         .catch((err) => {
             console.log(err.message);
-            app.emit('idle');
+            process.exit();
         });
 });
 
