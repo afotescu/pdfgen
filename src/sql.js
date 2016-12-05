@@ -284,7 +284,9 @@ position_x, position_y, null as position_y_start, font, alignment, size, type, p
  null as row_height, null as wt_sequence
 FROM payslip_data_positioning WHERE payslip_layout_id = $6
 ) sa
-order by case when position_y_start is not null then wt_sequence else position_y end, position_x`,
+order by case when position_y_start is null then position_y else null end desc, 
+case when position_y_start is not null then wt_sequence else null end asc,
+position_x`,
     testFixed: `SELECT * FROM (
 SELECT field, position_x, null as position_y, position_y_start,
 font, alignment, size, type, null as position_x_end, null as position_y_end, row_height, wt_sequence
@@ -515,5 +517,7 @@ position_x, position_y, null as position_y_start, font, alignment, size, type, p
  null as row_height, null as wt_sequence
 FROM payslip_data_positioning WHERE payslip_layout_id = 1
 ) sa
-order by case when position_y_start is not null then wt_sequence else position_y end, position_x`,
+order by case when position_y_start is null then position_y else null end desc, 
+case when position_y_start is not null then wt_sequence else null end asc,
+position_x`,
 };
