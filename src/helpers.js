@@ -2,12 +2,27 @@ const alignRight = (fontObject, fontSize, textContent, x) => {
     return (x - Math.round(fontObject.calculateTextDimensions(textContent, fontSize).xMax));
 };
 
-const getOptions = (size, font, color) => {
-    return {
-        size: parseFloat(size),
-        font,
-        color: 0x00,
-    };
+const alignCenter = (fontObject, fontSize, textContent, x) => {
+    return (x - (Math.round(fontObject.calculateTextDimensions(textContent, fontSize).xMax / 2)));
+};
+
+const printText = (pdfWriter, fontObject, fontSize, textContent, x, y, justify) => {
+    let space;
+
+    if(justify){
+        space = Number((535 - Math.round(fontObject.calculateTextDimensions(textContent,
+                fontSize).xMax)) / textContent.match(/ /g).length)
+    } else {
+        space = 0;
+    }
+
+    pdfWriter
+        .BT()
+        .Tw(space)
+        .Tf(fontObject,fontSize)
+        .Td(x,y)
+        .Tj(textContent)
+        .ET();
 };
 
 const leftpad = (str, len, ch) => {
@@ -25,4 +40,4 @@ const leftpad = (str, len, ch) => {
     return rStr;
 };
 
-export default { alignRight, getOptions, leftpad };
+export default { alignRight, alignCenter, printText, leftpad };

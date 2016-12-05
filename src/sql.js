@@ -253,11 +253,10 @@ where co.wt_id = $7 AND co.payslip_id = $1
 AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals ))),'{3}', 
 (SELECT lr.text_code_int from leave_reason lr
 JOIN ee_contract ec ON ec.leave_reason_code_int = lr.leave_reason_code_int
-WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7 AND 
-(NOW() BETWEEN ec.contract_start_date AND ec.contract_end_date))))
+WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)))
 
 WHEN field = 'uranterm2' THEN (SELECT REPLACE((SELECT REPLACE((SELECT tag_translation 
-FROM tags_translation WHERE tag_id = 65 AND language_id = 
+FROM tags_translation WHERE tag_id = 64 AND language_id = 
 (SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{4}', (SELECT DISTINCT ad.address_region  
 FROM address ad 
 JOIN work_center wc ON wc.payslip_address_id = ad.address_id 
@@ -266,8 +265,7 @@ WHERE ec.le_id = $5 AND ec.ee_id = $4 AND ec.wc_id = $7)) ), '{5}',
 (SELECT DISTINCT TO_CHAR(ec.contract_end_date, pll.date_format) 
 FROM ee_contract ec 
 JOIN payslip_layout_le pll ON pll.le_id = ec.le_id
-WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7 AND 
-(NOW() BETWEEN ec.contract_start_date AND ec.contract_end_date))))
+WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)))
 
 WHEN field='banks_branch_tax_iban' THEN (With query as ( SELECT 
 CASE WHEN ec.payment_type = 'bank_transfer' 

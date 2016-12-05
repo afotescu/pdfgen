@@ -9,8 +9,7 @@ const transformation = {
     proportional: true,
 };
 
-const generatePDF = (filePath, data)  => {
-
+const generatePDF = (filePath, data) => {
     const pdfWriter = hummus.createWriter(path.join(filePath));
 
     const fonts = {
@@ -27,21 +26,21 @@ const generatePDF = (filePath, data)  => {
 
     for (let i = 0; i < data.length; i += 1) {
         data[i].field = (data[i].field) ? data[i].field.trim() : '';
-        if(data[i].type === 'text') {
-            if(!data[i].position_y && data[i].position_y_start && data[i].row_height) {
-                if(data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && !bold){
+        if (data[i].type === 'text') {
+            if (!data[i].position_y && data[i].position_y_start && data[i].row_height) {
+                if (data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && !bold) {
                     seqNumber = data[i].wt_sequence;
                     rowCount += data[i].row_height;
                     bold = true;
-                } else if (data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && bold){
+                } else if (data[i].font === 'bold' && data[i].wt_sequence !== seqNumber && bold) {
                     seqNumber = data[i].wt_sequence;
                     rowCount += (2 * data[i].row_height);
                     bold = false;
-                } else if (data[i].font !== 'bold' && data[i].wt_sequence !== seqNumber && bold){
+                } else if (data[i].font !== 'bold' && data[i].wt_sequence !== seqNumber && bold) {
                     seqNumber = data[i].wt_sequence;
                     rowCount += (2 * data[i].row_height);
                     bold = false;
-                } else if (data[i].font !== 'bold' && data[i].wt_sequence !== seqNumber && !bold){
+                } else if (data[i].font !== 'bold' && data[i].wt_sequence !== seqNumber && !bold) {
                     seqNumber = data[i].wt_sequence;
                     rowCount += data[i].row_height;
                     bold = false;
@@ -50,21 +49,78 @@ const generatePDF = (filePath, data)  => {
                 }
                 data[i].position_y = data[i].position_y_start - rowCount;
             }
-            if(data[i].alignment === 'right' && data[i].position_x) {
-                content.writeText(
+            if (data[i].alignment === 'right' && data[i].position_x) {
+                helpers.printText(
+                    content,
+                    fonts[data[i].font],
+                    Number(data[i].size),
                     data[i].field,
                     helpers.alignRight(
-                        fonts[data[i].font], Number(data[i].size), data[i].field, Number(data[i].position_x)),
+                        fonts[data[i].font],
+                        Number(data[i].size),
+                        data[i].field,
+                        Number(data[i].position_x)
+                    ),
                     Number(data[i].position_y),
-                    helpers.getOptions(Number(data[i].size), fonts[data[i].font], data[i].color)
-                )
-            } else if(data[i].position_x){
-                content.writeText(
+                    false,
+                );
+            } else if (data[i].alignment === 'justify') {
+                const length = Math.round(fonts[data[i].font]
+                    .calculateTextDimensions(data[i].field, Number(data[i].size)).xMax);
+
+                let yPos = Number(data[i].position_y);
+                let result;
+
+                if (length < 535) {
+                    helpers.printText(
+                        content,
+                        fonts[data[i].font],
+                        Number(data[i].size),
+                        data[i].field,
+                        Number(data[i].position_x),
+                        Number(data[i].position_y),
+                        true,
+                    );
+                } else {
+                    result = data[i].field.replace(/.{130}\S*\s+/g, '$&@').split(/\s+@/);
+
+                    for (let j = 0; j < result.length; j += 1) {
+                        yPos -= 10;
+
+                        if (j !== result.length - 1) {
+                            helpers.printText(
+                                content,
+                                fonts[data[i].font],
+                                Number(data[i].size),
+                                result[j],
+                                Number(data[i].position_x),
+                                yPos,
+                                true,
+                            );
+                        } else {
+                            helpers.printText(
+                                content,
+                                fonts[data[i].font],
+                                Number(data[i].size),
+                                result[j],
+                                Number(data[i].position_x),
+                                yPos,
+                                false,
+                            );
+                        }
+
+                    }
+                }
+            } else if (data[i].position_x) {
+                helpers.printText(
+                    content,
+                    fonts[data[i].font],
+                    Number(data[i].size),
                     data[i].field,
-                    data[i].position_x,
-                    data[i].position_y,
-                    helpers.getOptions(Number(data[i].size), fonts[data[i].font], data[i].color)
-                )
+                    Number(data[i].position_x),
+                    Number(data[i].position_y),
+                    false,
+                );
             }
         } else if (data[i].type === 'image') {
             content.drawImage(
@@ -72,14 +128,14 @@ const generatePDF = (filePath, data)  => {
                 Number(data[i].position_y),
                 path.join(__dirname, './templates', data[i].field),
                 { transformation }
-            )
+            );
         } else if (data[i].type === 'line') {
             content.drawPath(
                 Number(data[i].position_x),
                 Number(data[i].position_y),
                 Number(data[i].position_x_end),
                 Number(data[i].position_y_end),
-            )
+            );
         }
     }
 
