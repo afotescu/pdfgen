@@ -1,5 +1,6 @@
 import hummus from 'hummus';
 import path from 'path';
+import config from './config';
 import helpers from './helpers';
 
 const transformation = {
@@ -87,4 +88,17 @@ const generatePDF = (filePath, data)  => {
         .end();
 };
 
-export default generatePDF;
+const concatPDFs = (filePath, files, pswd) => {
+    const pdfWriter = hummus.createWriter(path.join(config.archive, filePath),
+        {
+            userPassword: pswd,
+            ownerPassword: pswd,
+            userProtectionFlag: 4,
+        });
+    for (let i = 0; i < files.length; i += 1) {
+        pdfWriter.appendPDFPagesFromPDF(path.join(config.archive, files[i]));
+    }
+    pdfWriter.end();
+};
+
+export default { generatePDF, concatPDFs };

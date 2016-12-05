@@ -1,7 +1,19 @@
 export default {
+    leConcatFiles: `SELECT ARRAY((SELECT af.file_path || '/' || af.file_name FROM arch_files af
+JOIN work_center wc ON wc.wc_id = af.wc_id AND wc.le_id = af.le_id
+    WHERE run_id = $1 AND run_version_id = $2 ORDER BY wc.wc_short_name, ee_id)) as files`,
+    wcConcatFiles: `SELECT  wc.wc_short_name as wc_name, ARRAY_AGG(af.file_path || '/' || af.file_name) as files 
+    FROM arch_files af
+    JOIN work_center wc ON wc.wc_id = af.wc_id AND wc.le_id = af.le_id
+    WHERE run_id = $1 AND run_version_id = $2 AND af.wc_id = $3 GROUP BY wc.wc_short_name`,
+    checkWorkCenters: 'SELECT DISTINCT wc_id FROM arch_files WHERE run_id = $1 AND run_version_id = $2',
     clearRunFromArchive: 'DELETE FROM arch_files WHERE run_id = $1 AND run_version_id = $2 AND doc_type = \'PAY\'',
-    checkTasks: `SELECT task_id, run_id, run_version FROM calc_tasks WHERE status='GENR' AND payslip_exists = false
-     ORDER BY task_id LIMIT 1`,
+    checkTasks: `SELECT ct.task_id, ct.run_id, ct.run_version, li.payslip_password, pr.le_id, p.code FROM calc_tasks ct
+JOIN payroll_runs pr ON pr.run_id = ct.run_id AND pr.run_version = ct.run_version
+JOIN le_ids li ON li.le_id = pr.le_id
+JOIN periods p ON p.period_id = pr.period_id
+WHERE ct.status='GENR' AND ct.payslip_exists = false
+     ORDER BY ct.task_id LIMIT 1`,
     writeToArchive: `INSERT INTO arch_files(ee_id, run_id, run_version_id, wc_id, le_id, contract_id,
                     file_name, file_path, doc_type) VALUES `,
     finishTask: 'UPDATE calc_tasks SET payslip_exists = true WHERE task_id = $1',

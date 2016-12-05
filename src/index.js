@@ -9,7 +9,7 @@ import helpers from './helpers';
 import Timer from './timer';
 import config from './config';
 import query from './sql';
-import generate from './pdfGenerator';
+import pdf from './pdfGenerator';
 
 let db = new Pg({ promiseLib: Promise });
 db = db(config.connectionString);
@@ -66,6 +66,7 @@ app.on('idle', () => {
 app.on('processData', (task) => {
     console.time('Done');
     const folders = [];
+    let generateWcPdfs = false;
     let arrOfGeneralData = null;
     let writeToArchiveQuery = query.writeToArchive;
     db.none(query.clearRunFromArchive, [task.run_id, task.run_version])
@@ -78,6 +79,7 @@ app.on('processData', (task) => {
                     results[i].termination ? 'PAY_run%s_ver%s_%s_term.pdf' : 'PAY_run%s_ver%s_%s.pdf';
                 const folderPath = path.join(config.archive,
                     `le_${results[i].le_id.toString()}`,
+                    task.code,
                     `ee_${results[i].ee_id.toString()}`
                 );
                 const fileName = format(defaultPayslipName,
@@ -85,18 +87,23 @@ app.on('processData', (task) => {
                     helpers.leftpad(results[i].run_version.toString(), 7, 0),
                     results[i].payslip_id.toString()
                 );
+                const folderRelativePath = path.join(
+                    `le_${results[i].le_id.toString()}`,
+                    task.code,
+                    `ee_${results[i].ee_id.toString()}`
+                );
                 const fullPath = path.join(folderPath, fileName);
                 folders.push(fullPath);
                 arrOfFolders
                     .push(mkdirp(folderPath));
                 if (i === results.length - 1) {
                     writeToArchiveQuery += `(${results[i].ee_id}, ${results[i].run_id}, ${results[i].run_version},
-                    ${results[i].ee_id}, ${results[i].le_id}, ${results[i].contract_id},
-                    '${fileName}', '${folderPath}', 'PAY');`;
+                    ${results[i].wc_id}, ${results[i].le_id}, ${results[i].contract_id},
+                    '${fileName}', '${folderRelativePath}', 'PAY');`;
                 } else {
                     writeToArchiveQuery += `(${results[i].ee_id}, ${results[i].run_id}, ${results[i].run_version},
-                    ${results[i].ee_id}, ${results[i].le_id}, ${results[i].contract_id},
-                    '${fileName}', '${folderPath}', 'PAY'),`;
+                    ${results[i].wc_id}, ${results[i].le_id}, ${results[i].contract_id},
+                    '${fileName}', '${folderRelativePath}', 'PAY'),`;
                 }
 
             }
@@ -114,12 +121,44 @@ app.on('processData', (task) => {
         })
         .then((data) => {
             for (let i = 0; i < data.length; i += 1) {
-                generate(folders[i], data[i]);
+                pdf.generatePDF(folders[i], data[i]);
             }
             return Promise.resolve();
         })
         .then(() => db.none(writeToArchiveQuery))
-        .then(() => {
+        .then(() => db.oneOrNone(query.leConcatFiles, [task.run_id, task.run_version]))
+        .then((files) => {
+            const payslipName = 'PAY_run%s_ver%s.pdf';
+            pdf.concatPDFs(path.join(`le_${task.le_id}`, task.code, format(payslipName,
+                helpers.leftpad(task.run_id.toString(), 7, 0),
+                helpers.leftpad(task.run_version.toString(), 7, 0))
+            ), files.files, task.payslip_password);
+            return db.any(query.checkWorkCenters, [task.run_id, task.run_version]);
+        })
+        .then((wcs) => {
+            if (wcs.length > 1) {
+                generateWcPdfs = true;
+                const arrOfWcsFiles = [];
+                for (let i = 0; i < wcs.length; i += 1) {
+                    arrOfWcsFiles.push(db.oneOrNone(query.wcConcatFiles, [task.run_id, task.run_version, wcs[i].wc_id]));
+                }
+                return Promise.all(arrOfWcsFiles);
+            }
+            return Promise.resolve();
+        })
+        .then((results) => {
+            if (generateWcPdfs) {
+                const payslipName = '%s run%s_ver%s.pdf';
+                for (let i = 0; i < results.length; i += 1) {
+                    pdf.concatPDFs(path.join(`le_${task.le_id}`, task.code, format(payslipName,
+                        results[i].wc_name,
+                        helpers.leftpad(task.run_id.toString(), 7, 0),
+                        helpers.leftpad(task.run_version.toString(), 7, 0))),
+                        results[i].files, task.payslip_password);
+                }
+
+            }
+            console.log(`Task for run_id %s and run_version %s is done`, task.run_id, task.run_version);
             console.timeEnd('Done');
         })
         .catch((err) => {
