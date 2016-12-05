@@ -240,6 +240,33 @@ JOIN  ee_contract ec  ON ec.contract_id = pso.contract_id
 WHERE ec.ee_id = $4 AND ec.le_id = $5 AND pso.run_id = $2 AND pso.run_version = $3 AND (NOW() BETWEEN ec.contract_start_date AND ec.contract_end_date)
 GROUP BY ss_h_d_m)::text
 
+WHEN field = 'uranterm1' THEN (select replace(
+(SELECT replace(
+(SELECT replace(
+(SELECT tag_translation FROM tags_translation WHERE tag_id = 65 AND language_id = 
+(SELECT leg_language FROM ee_id_le WHERE ee_id = $4) ), '{1}', 
+trim(both ' ' FROM (SELECT le_name FROM legal_entity WHERE le_id = $5)))), '{2}', 
+(SELECT to_char(SUM(co.amount), '999,999.' || repeat('9', pw.amount_format_decimals)) 
+from calculation_output co
+JOIN payslip_wt pw ON pw.wt_id = co.wt_id
+where co.wt_id = $7 AND co.payslip_id = $1
+AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals ))),'{3}', 
+(SELECT lr.text_code_int from leave_reason lr
+JOIN ee_contract ec ON ec.leave_reason_code_int = lr.leave_reason_code_int
+WHERE ec.ee_id = $4)))
+
+WHEN field = 'uranterm2' THEN (SELECT REPLACE((SELECT REPLACE((SELECT tag_translation 
+FROM tags_translation WHERE tag_id = 65 AND language_id = 
+(SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{4}', (SELECT DISTINCT ad.address_region  
+FROM address ad 
+JOIN work_center wc ON wc.payslip_address_id = ad.address_id 
+JOIN ee_contract ec ON ec.wc_id = wc.wc_id AND ec.le_id = wc.le_id
+WHERE ec.le_id = $5 AND ec.ee_id = $4 AND ec.wc_id = $7)) ), '{5}',
+(SELECT DISTINCT TO_CHAR(ec.contract_end_date, pll.date_format) 
+FROM ee_contract ec 
+JOIN payslip_layout_le pll ON pll.le_id = ec.le_id
+WHERE ec.ee_id = $4 AND ec.le_id = $5)))
+
 WHEN field='banks_branch_tax_iban' THEN (With query as ( SELECT 
 CASE WHEN ec.payment_type = 'bank_transfer' 
 THEN ( ' ' || '' || b.branch_code || ' (' || b.tax_id || ') ' || overlay(b.iban placing '**********'  from length(b.iban) - 10 for length(b.iban)) ) 
