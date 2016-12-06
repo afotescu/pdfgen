@@ -83,32 +83,17 @@ const generatePDF = (filePath, data, logo) => {
                     );
                 } else {
                     result = data[i].field.replace(/.{130}\S*\s+/g, '$&@').split(/\s+@/);
-
                     for (let j = 0; j < result.length; j += 1) {
                         yPos -= 10;
-
-                        if (j !== result.length - 1) {
-                            helpers.printText(
-                                content,
-                                fonts[data[i].font],
-                                Number(data[i].size),
-                                result[j],
-                                Number(data[i].position_x),
-                                yPos,
-                                true,
-                            );
-                        } else {
-                            helpers.printText(
-                                content,
-                                fonts[data[i].font],
-                                Number(data[i].size),
-                                result[j],
-                                Number(data[i].position_x),
-                                yPos,
-                                false,
-                            );
-                        }
-
+                        helpers.printText(
+                            content,
+                            fonts[data[i].font],
+                            Number(data[i].size),
+                            result[j],
+                            Number(data[i].position_x),
+                            yPos,
+                            (j !== result.length - 1)
+                        );
                     }
                 }
             } else if (data[i].position_x) {
