@@ -26,6 +26,7 @@ process.on('uncaughtException', (err) => {
     console.log(err.message);
     app.emit('idle');
 });
+
 rl.on('line', (line) => {
     switch (line) {
         case 'uptime':
@@ -49,16 +50,18 @@ app.on('idle', () => {
     let i = 0;
     const checkTasks = new Timer(() => {
         checkTasks.stop();
-        process.stdout.clearLine();  // clear current text
-        process.stdout.cursorTo(0);  // move cursor to beginning of line
+        readline.clearLine();
+        readline.cursorTo(0);
+        // process.stdout.clearLine();  // clear current text
+        // process.stdout.cursorTo(0);  // move cursor to beginning of line
         i = (i + 1) % 4;
         db.oneOrNone(query.checkTasks)
             .then((task) => {
                 if (task) {
-                    console.log('Task found. Processing data.');
+                    console.log('\rTask found. Processing data.');
                     return app.emit('processData', task);
                 }
-                process.stdout.write(`Waiting for tasks${dot.repeat(i)}\r`);
+                process.stdout.write(`\rWaiting for tasks${dot.repeat(i)}`);
                 return checkTasks.start();
             })
             .catch((err) => {
@@ -126,7 +129,7 @@ app.on('processData', (task) => {
                 arrOfPdfData.push(db.any(query.test,
                     [arrOfGeneralData[i].payslip_id, arrOfGeneralData[i].run_id, arrOfGeneralData[i].run_version,
                         arrOfGeneralData[i].ee_id, arrOfGeneralData[i].le_id, arrOfGeneralData[i].payslip_layout_id,
-                        arrOfGeneralData[i].wc_id, arrOfGeneralData[i].code]));
+                        arrOfGeneralData[i].wc_id, task.code]));
             }
             return Promise.all(arrOfPdfData);
         })
