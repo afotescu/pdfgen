@@ -12,6 +12,10 @@ import config from './config';
 import query from './sql';
 import pdf from './pdfGenerator';
 
+const MOVE_LEFT = new Buffer('1b5b3130303044', 'hex').toString();
+const MOVE_UP = new Buffer('1b5b3141', 'hex').toString();
+const CLEAR_LINE = new Buffer('1b5b304b', 'hex').toString();
+
 let db = new Pg({ promiseLib: Promise });
 db = db(config.connectionString);
 const app = new EventEmitter();
@@ -50,18 +54,16 @@ app.on('idle', () => {
     let i = 0;
     const checkTasks = new Timer(() => {
         checkTasks.stop();
-        readline.clearLine();
-        readline.cursorTo(0);
-        // process.stdout.clearLine();  // clear current text
-        // process.stdout.cursorTo(0);  // move cursor to beginning of line
+        // readline.clearLine();
+        // readline.cursorTo(0);
         i = (i + 1) % 4;
         db.oneOrNone(query.checkTasks)
             .then((task) => {
                 if (task) {
-                    console.log('\rTask found. Processing data.');
+                    console.log(`${MOVE_LEFT + CLEAR_LINE}Task found. Processing data.`);
                     return app.emit('processData', task);
                 }
-                process.stdout.write(`\rWaiting for tasks${dot.repeat(i)}`);
+                process.stdout.write(`${MOVE_LEFT + CLEAR_LINE}Waiting for tasks${dot.repeat(i)}`);
                 return checkTasks.start();
             })
             .catch((err) => {
