@@ -271,7 +271,7 @@ FROM tags_translation WHERE tag_id = 65 AND language_id =
  '999,999.' || repeat('9', pw.amount_format_decimals)) 
 from calculation_output co
 JOIN payslip_wt pw ON pw.wt_id = co.wt_id
-where co.wt_id = 162 AND co.payslip_id = $1
+where co.wt_id = 146 AND co.payslip_id = $1
 AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )))
 
 WHEN field = 'uranterm2' THEN (SELECT REPLACE((SELECT tag_translation FROM tags_translation WHERE tag_id = 66
