@@ -107,29 +107,29 @@ UNION ALL
 SELECT
 CASE
 WHEN field = 'payslip_date' THEN TO_CHAR((SELECT payslip_date FROM payroll_runs WHERE run_id = $2 
-AND run_version = $3 AND le_id = $5), (SELECT date_format FROM payslip_layout_le WHERE le_id = $5))
+AND run_version = $3 AND le_id = $5 LIMIT 1), (SELECT date_format FROM payslip_layout_le WHERE le_id = $5))
 
 WHEN field = 'ee_id_text' THEN (SELECT ee_id_text FROM ee_id_le WHERE ee_id = $4 AND le_id = $5
-AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')))
+AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field = 'ss_id' THEN (SELECT ss_id FROM ee_id_universal_data WHERE ee_id = $4 
-AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')))
+AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field = 'ee_name' THEN (SELECT CASE WHEN last_name2 IS NOT NULL THEN
                 last_name || ' ' || last_name2 || ', ' || first_name 
                 ELSE last_name || ' ' || first_name END FROM ee_id_universal_data WHERE ee_id = $4 
-                AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')))
+                AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field = 'address_line1_ee' THEN (SELECT DISTINCT ad.address_line1 FROM address ad 
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id 
 JOIN ee_contract ec ON ec.ee_id = ea.ee_id JOIN calculation_output co ON co.contract_id = ec.contract_id 
 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))
 WHERE ($8 BETWEEN TO_CHAR(ea.from_date, 'YYYY MM') AND TO_CHAR(ea.to_date, 'YYYY MM')) 
-AND ec.ee_id = $4 AND ec.le_id = $5)
+AND ec.ee_id = $4 AND ec.le_id = $5 LIMIT 1)
 
 WHEN field = 'address_line1_le' THEN (SELECT DISTINCT ad.address_line1 FROM address ad 
 JOIN legal_entity le ON le.payslip_address_id = ad.address_id WHERE le_id = $5 
-AND ($8 BETWEEN TO_CHAR(le.from_date, 'YYYY MM') AND TO_CHAR(le.to_date, 'YYYY MM')))
+AND ($8 BETWEEN TO_CHAR(le.from_date, 'YYYY MM') AND TO_CHAR(le.to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field = 'address_zip_city' THEN (SELECT DISTINCT ad.address_zip_code || ' ' || ad.address_city  
 FROM address ad 
@@ -139,7 +139,8 @@ JOIN calculation_output co ON co.contract_id = ec.contract_id
 WHERE ($8 BETWEEN TO_CHAR(ea.from_date, 'YYYY MM') AND TO_CHAR(ea.to_date, 'YYYY MM')) AND co.payslip_id = $1 
 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5
 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))
-)
+LIMIT 1)
+
 WHEN field = 'address_country' THEN (SELECT DISTINCT ad.address_country 
 FROM address ad 
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id
@@ -150,10 +151,10 @@ AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5
 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))
 )
 WHEN field = 'periods_code' THEN (SELECT p.code FROM periods p JOIN payroll_runs pr ON pr.period_id = p.period_id
-WHERE pr.run_id = $2 AND pr.run_version = $3 AND pr.le_id = $5)
+WHERE pr.run_id = $2 AND pr.run_version = $3 AND pr.le_id = $5 LIMIT 1)
 
 WHEN field = 'payment_date' THEN TO_CHAR((SELECT payment_date FROM payroll_runs WHERE run_id = $2 
-AND run_version = $3 AND le_id = $5), (SELECT date_format FROM payslip_layout_le WHERE le_id = $5))
+AND run_version = $3 AND le_id = $5 LIMIT 1), (SELECT date_format FROM payslip_layout_le WHERE le_id = $5))
 
 WHEN field = 'banks_bank_iban' THEN (SELECT DISTINCT b.bank || ' ' || b.iban
 FROM banks b  
@@ -163,7 +164,7 @@ JOIN payroll_runs pr ON ec.le_id = pr.le_id
 JOIN calculation_output co ON co.contract_id = ec.contract_id
 WHERE ($8 BETWEEN TO_CHAR(eb.from_date, 'YYYY MM') AND TO_CHAR(eb.to_date, 'YYYY MM')) AND  co.payslip_id = $1 
 AND co.run_id = $2 AND co.run_version = $3 AND ec.ee_id = $4 AND ec.le_id = $5 
-AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))
+AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM')) LIMIT 1
 )
 
 WHEN (SELECT SUBSTRING(field, 1, 4)) = 'tag_' THEN (SELECT DISTINCT ptt.tag_translation FROM tags_translation ptt 
@@ -174,68 +175,68 @@ WHEN field='wt_146' THEN (SELECT to_char(SUM(co.amount), '999,999.' || repeat('9
 from calculation_output co
 JOIN payslip_wt pw ON pw.wt_id = co.wt_id
 where co.wt_id = 146 AND co.payslip_id = $1
-AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )::text
+AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals)::text
 
 WHEN field='wt_162' THEN (SELECT to_char(co.amount, '999,999.' || repeat('9', pw.amount_format_decimals)) 
 from calculation_output co
 JOIN payslip_wt pw ON pw.wt_id = co.wt_id
 where co.wt_id = 162 AND co.payslip_id = $1
-AND run_id = $2 AND run_version = $3 )::text
+AND run_id = $2 AND run_version = $3)::text
 
 
 WHEN field='wt_51' THEN (SELECT to_char(SUM(co.amount), '999,999.' || repeat('9', pw.amount_format_decimals)) 
 from calculation_output co
 JOIN payslip_wt pw ON pw.wt_id = co.wt_id
 where co.wt_id = 51 AND co.payslip_id = $1
-AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )::text
+AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals)::text
 
 WHEN field='text_wt_51' THEN (SELECT payslip_text FROM wt_text WHERE wt_id = 51 AND
 lang_id = (SELECT leg_language FROM ee_id_le WHERE ee_id = $4 AND le_id = $5))
 
 WHEN field='le_name' THEN (SELECT le_name FROM legal_entity WHERE le_id = $5 AND 
-($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')))
+($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='address_zip_region_city' THEN 
 (SELECT ad.address_zip_code || ' ' || ad.address_region || ' (' || ad.address_city || ')' 
 FROM address ad 
 JOIN legal_entity le ON le.payslip_address_id = ad.address_id
-WHERE le.le_id = $5 AND ($8 BETWEEN TO_CHAR(le.from_date, 'YYYY MM') AND TO_CHAR(le.to_date, 'YYYY MM')))
+WHERE le.le_id = $5 AND ($8 BETWEEN TO_CHAR(le.from_date, 'YYYY MM') AND TO_CHAR(le.to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='tax_id_le' THEN (SELECT le.tax_id  FROM legal_entity le WHERE le.le_id = $5
- AND ($8 BETWEEN TO_CHAR(le.from_date, 'YYYY MM') AND TO_CHAR(le.to_date, 'YYYY MM')))
+ AND ($8 BETWEEN TO_CHAR(le.from_date, 'YYYY MM') AND TO_CHAR(le.to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='ccc' THEN (SELECT wc.ccc FROM work_center wc 
 JOIN ee_contract ec ON ec.wc_id = wc.wc_id AND ec.le_id = wc.le_id 
 WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') 
-AND TO_CHAR(ec.contract_end_date, 'YYYY MM')))
+AND TO_CHAR(ec.contract_end_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='seniority_date' THEN (SELECT TO_CHAR(ec.seniority_date, pll.date_format) 
 FROM ee_contract ec
 JOIN payslip_layout_le pll ON pll.le_id = ec.le_id
 WHERE ec.le_id = $5 AND ec.ee_id = $4 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') 
-AND TO_CHAR(ec.contract_end_date, 'YYYY MM')))
+AND TO_CHAR(ec.contract_end_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='contract_type' THEN (SELECT ec.contract_type from ee_contract ec 
 WHERE ec.le_id = $5 AND ec.ee_id = $4 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') 
-AND TO_CHAR(ec.contract_end_date, 'YYYY MM')))
+AND TO_CHAR(ec.contract_end_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='ss_group' THEN (SELECT ec.ss_group from ee_contract ec WHERE ec.le_id = $5 AND ec.ee_id = $4 
-AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM')))::text
+AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM')) LIMIT 1)::text
 
 WHEN field='tax_id_ee' THEN (SELECT tax_id FROM ee_id_universal_data
-WHERE ee_id = $4 AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')))
+WHERE ee_id = $4 AND ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='wc_name' THEN (
 SELECT wc.wc_name FROM work_center wc 
 WHERE wc.wc_id = $7 AND wc.le_id = $5 AND ($8 BETWEEN TO_CHAR(wc.from_date, 'YYYY MM') 
-AND TO_CHAR(wc.to_date, 'YYYY MM')))
+AND TO_CHAR(wc.to_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='lev_sub_name' THEN (SELECT cal.lev_sub_name FROM coll_agree_lev cal 
 LEFT JOIN ee_contract ec ON ec.coll_id = cal.coll_id AND ec.coll_version = cal.coll_version AND ec.level = cal.level 
 AND ec.ss_h_d_m = cal.ss_h_d_m AND (ec.sublevel = cal.sublevel OR cal.sublevel = 0)
  AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))
 WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') 
-AND TO_CHAR(ec.contract_end_date, 'YYYY MM')))
+AND TO_CHAR(ec.contract_end_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='desde_hasta' THEN (SELECT 'desde ' || TO_CHAR(min(pso.from_date), pll.date_format) || ' , hasta ' || 
 TO_CHAR(max(pso.to_date),pll.date_format)
@@ -246,12 +247,12 @@ JOIN ee_contract ec ON ec.contract_id = pso.contract_id JOIN payslip_layout_le p
 JOIN payroll_runs pr ON pr.run_id = co.run_id AND pr.run_version= co.run_version AND pr.run_type_id!=2
 WHERE ec.le_id = $5 AND ec.ee_id = $4 AND pr.run_id = $2 AND pr.run_version = $3 
 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))
-GROUP BY pll.date_format
+GROUP BY pll.date_format LIMIT 1
 )
 
 WHEN field='emp_descr' THEN (SELECT ec.employment_descrip from ee_contract ec WHERE ec.ee_id = $4 
 AND ec.le_id = $5 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND 
-TO_CHAR(ec.contract_end_date, 'YYYY MM')))
+TO_CHAR(ec.contract_end_date, 'YYYY MM')) LIMIT 1)
 
 WHEN field='dn' THEN (SELECT 
 CASE 
@@ -262,7 +263,7 @@ FROM pay_subperiod_output pso
 JOIN  ee_contract ec  ON ec.contract_id = pso.contract_id 
 WHERE ec.ee_id = $4 AND ec.le_id = $5 AND pso.run_id = $2 AND pso.run_version = $3 AND 
 ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))
-GROUP BY ss_h_d_m)::text
+GROUP BY ss_h_d_m LIMIT 1)::text
 
 WHEN field = 'uranterm1' THEN (SELECT REPLACE((SELECT REPLACE(tag_translation, 
 '{1}',(SELECT le_name FROM legal_entity WHERE le_id = $5)) 
@@ -272,13 +273,13 @@ FROM tags_translation WHERE tag_id = 65 AND language_id =
 from calculation_output co
 JOIN payslip_wt pw ON pw.wt_id = co.wt_id
 where co.wt_id = 146 AND co.payslip_id = $1
-AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )))
+AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )) LIMIT 1)
 
 WHEN field = 'uranterm2' THEN (SELECT REPLACE((SELECT tag_translation FROM tags_translation WHERE tag_id = 66
 AND language_id = 
 (SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{3}', (SELECT lr.text_code_int from leave_reason lr
 JOIN ee_contract ec ON ec.leave_reason_code_int = lr.leave_reason_code_int
-WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)))
+WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)) LIMIT 1)
 
 WHEN field = 'uranterm3' THEN (SELECT REPLACE((SELECT REPLACE((SELECT tag_translation 
 FROM tags_translation WHERE tag_id = 64 AND language_id = 
@@ -290,7 +291,7 @@ WHERE ec.le_id = $5 AND ec.ee_id = $4 AND ec.wc_id = $7)) ), '{5}',
 (SELECT DISTINCT TO_CHAR(ec.contract_end_date, pll.date_format) 
 FROM ee_contract ec 
 JOIN payslip_layout_le pll ON pll.le_id = ec.le_id
-WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)))
+WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)) LIMIT 1)
 
 WHEN field='banks_branch_tax_iban' THEN (With query as ( SELECT 
 CASE WHEN ec.payment_type = 'bank_transfer' 
@@ -307,7 +308,7 @@ WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ($8 BETWEEN TO_CHAR(eb.from_date, 'YYY
 TO_CHAR(eb.to_date, 'YYYY MM')) AND pr.run_id = 
 $2 AND pr.run_version = $3
 AND ($8 BETWEEN TO_CHAR(ec.contract_start_date, 'YYYY MM') AND TO_CHAR(ec.contract_end_date, 'YYYY MM'))) 
-SELECT * FROM query)
+SELECT * FROM query LIMIT 1)
 ELSE field
 END AS field, 
 position_x, position_y, null as position_y_start, font, alignment, size, type, position_x_end, position_y_end,
