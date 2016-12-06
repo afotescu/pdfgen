@@ -256,29 +256,24 @@ WHERE ec.ee_id = $4 AND ec.le_id = $5 AND pso.run_id = $2 AND pso.run_version = 
 (NOW() BETWEEN ec.contract_start_date AND ec.contract_end_date)
 GROUP BY ss_h_d_m)::text
 
-WHEN field = 'uranterm1' THEN (select replace(
-(SELECT replace(
-(SELECT replace(
-(SELECT tag_translation FROM tags_translation WHERE tag_id = 64 AND language_id = 
-(SELECT leg_language FROM ee_id_le WHERE ee_id = $4) ), '{1}', 
-trim(both ' ' FROM (SELECT le_name FROM legal_entity WHERE le_id = $5)))), '{2}', 
-(SELECT to_char(SUM(co.amount), '999,999.' || repeat('9', pw.amount_format_decimals)) 
+WHEN field = 'uranterm1' THEN (SELECT REPLACE((SELECT REPLACE(tag_translation, 
+'{1}',(SELECT le_name FROM legal_entity WHERE le_id = $5)) 
+FROM tags_translation WHERE tag_id = 65 AND language_id = 
+(SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{2}', (SELECT to_char(SUM(co.amount),
+ '999,999.' || repeat('9', pw.amount_format_decimals)) 
 from calculation_output co
 JOIN payslip_wt pw ON pw.wt_id = co.wt_id
-where co.wt_id = $7 AND co.payslip_id = $1
-AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals ))),'{3}', 
-(SELECT lr.text_code_int from leave_reason lr
-JOIN ee_contract ec ON ec.leave_reason_code_int = lr.leave_reason_code_int
-WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)))
+where co.wt_id = 162 AND co.payslip_id = $1
+AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )))
 
-WHEN field = 'uranterm2' THEN (SELECT REPLACE((SELECT tag_translation FROM tags_translation WHERE tag_id = 65
+WHEN field = 'uranterm2' THEN (SELECT REPLACE((SELECT tag_translation FROM tags_translation WHERE tag_id = 66
 AND language_id = 
 (SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{3}', (SELECT lr.text_code_int from leave_reason lr
 JOIN ee_contract ec ON ec.leave_reason_code_int = lr.leave_reason_code_int
 WHERE ec.ee_id = $4 AND ec.le_id = $5 AND ec.wc_id = $7)))
 
 WHEN field = 'uranterm3' THEN (SELECT REPLACE((SELECT REPLACE((SELECT tag_translation 
-FROM tags_translation WHERE tag_id = 66 AND language_id = 
+FROM tags_translation WHERE tag_id = 64 AND language_id = 
 (SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{4}', (SELECT DISTINCT ad.address_region  
 FROM address ad 
 JOIN work_center wc ON wc.payslip_address_id = ad.address_id 
