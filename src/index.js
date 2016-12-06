@@ -115,7 +115,7 @@ app.on('processData', (task) => {
                 arrOfPdfData.push(db.any(query.test,
                     [arrOfGeneralData[i].payslip_id, arrOfGeneralData[i].run_id, arrOfGeneralData[i].run_version,
                         arrOfGeneralData[i].ee_id, arrOfGeneralData[i].le_id, arrOfGeneralData[i].payslip_layout_id,
-                        arrOfGeneralData[i].wc_id]));
+                        arrOfGeneralData[i].wc_id, arrOfGeneralData[i].code]));
             }
             return Promise.all(arrOfPdfData);
         })
