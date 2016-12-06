@@ -9,7 +9,7 @@ const transformation = {
     proportional: true,
 };
 
-const generatePDF = (filePath, data) => {
+const generatePDF = (filePath, data, logo) => {
     const pdfWriter = hummus.createWriter(path.join(filePath));
 
     const fonts = {
@@ -126,7 +126,7 @@ const generatePDF = (filePath, data) => {
             content.drawImage(
                 Number(data[i].position_x),
                 Number(data[i].position_y),
-                path.join(__dirname, './templates', data[i].field),
+                logo,
                 { transformation }
             );
         } else if (data[i].type === 'line') {

@@ -3,6 +3,7 @@ import Pg from 'pg-promise';
 import { EventEmitter } from 'events';
 import readline from 'readline';
 import mkdirp from 'mkdirp';
+import fs from 'fs';
 import path from 'path';
 import { format } from 'util';
 import helpers from './helpers';
@@ -19,6 +20,7 @@ const rl = readline.createInterface({
     output: process.stdout,
 });
 Promise.promisifyAll(mkdirp);
+Promise.promisifyAll(fs);
 
 process.on('uncaughtException', (err) => {
     console.log(err.message);
@@ -43,16 +45,20 @@ rl.on('line', (line) => {
 });
 // Main event which will check every second the database for tasks
 app.on('idle', () => {
+    const dot = '.';
+    let i = 0;
     const checkTasks = new Timer(() => {
         checkTasks.stop();
+        process.stdout.clearLine();  // clear current text
+        process.stdout.cursorTo(0);  // move cursor to beginning of line
+        i = (i + 1) % 4;
         db.oneOrNone(query.checkTasks)
             .then((task) => {
                 if (task) {
                     console.log('Task found. Processing data.');
-                    // return app.emit('processData', task.task_id);
                     return app.emit('processData', task);
                 }
-                console.log('Waiting for tasks...');
+                process.stdout.write(`Waiting for tasks${dot.repeat(i)}\r`);
                 return checkTasks.start();
             })
             .catch((err) => {
@@ -64,12 +70,17 @@ app.on('idle', () => {
 
 // Processing the tasks
 app.on('processData', (task) => {
-    console.time('Done');
     const folders = [];
     let generateWcPdfs = false;
     let arrOfGeneralData = null;
     let writeToArchiveQuery = query.writeToArchive;
-    db.none(query.clearRunFromArchive, [task.run_id, task.run_version])
+    const imgPath = path.join(__dirname, 'logo.jpg');
+    console.log('Please wait...');
+    db.oneOrNone(query.getLeImage, task.le_id)
+        .then((data) => {
+            fs.writeFileAsync(imgPath, data.picture.toString('binary'), 'base64')
+        })
+        .then(() => db.none(query.clearRunFromArchive, [task.run_id, task.run_version]))
         .then(() => db.any(query.getConfigurationData, [task.task_id]))
         .then((results) => {
             arrOfGeneralData = results;
@@ -121,7 +132,7 @@ app.on('processData', (task) => {
         })
         .then((data) => {
             for (let i = 0; i < data.length; i += 1) {
-                pdf.generatePDF(folders[i], data[i]);
+                pdf.generatePDF(folders[i], data[i], imgPath);
             }
             return Promise.resolve();
         })
@@ -133,6 +144,12 @@ app.on('processData', (task) => {
                 helpers.leftpad(task.run_id.toString(), 7, 0),
                 helpers.leftpad(task.run_version.toString(), 7, 0))
             ), files.files, task.payslip_password);
+            writeToArchiveQuery = query.writeToArchive;
+            writeToArchiveQuery += `(NULL,${task.run_id}, ${task.run_version}, NULL, ${task.le_id}, NULL,
+            '${format(payslipName,
+                helpers.leftpad(task.run_id.toString(), 7, 0),
+                helpers.leftpad(task.run_version.toString(), 7, 0))}', 
+                '${path.join(`le_${task.le_id}`, task.code)}', 'PAY')`;
             return db.any(query.checkWorkCenters, [task.run_id, task.run_version]);
         })
         .then((wcs) => {
@@ -155,11 +172,22 @@ app.on('processData', (task) => {
                         helpers.leftpad(task.run_id.toString(), 7, 0),
                         helpers.leftpad(task.run_version.toString(), 7, 0))),
                         results[i].files, task.payslip_password);
+                    writeToArchiveQuery += `, (NULL,${task.run_id}, ${task.run_version}, ${results[i].wc_id},
+                        ${task.le_id}, NULL,
+                        '${format(payslipName,
+                        results[i].wc_name,
+                        helpers.leftpad(task.run_id.toString(), 7, 0),
+                        helpers.leftpad(task.run_version.toString(), 7, 0))}', 
+                        '${path.join(`le_${task.le_id}`, task.code)}', 'PAY')`;
                 }
-
             }
-            console.log(`Task for run_id %s and run_version %s is done`, task.run_id, task.run_version);
-            console.timeEnd('Done');
+        })
+        .then(() => db.none(writeToArchiveQuery))
+        .then(() => db.none(query.closeTask, [task.task_id]))
+        .then(() => {
+            console.log('Task for run_id %s and run_version %s is done', task.run_id, task.run_version);
+            console.log('Going back for searching tasks\n');
+            return app.emit('idle');
         })
         .catch((err) => {
             console.log(err.message);

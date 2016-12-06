@@ -1,11 +1,14 @@
 export default {
+    getLeImage: 'SELECT picture FROM payslip_pictures WHERE le_id = $1',
+    closeTask: 'UPDATE calc_tasks SET payslip_exists = true WHERE task_id = $1',
     leConcatFiles: `SELECT ARRAY((SELECT af.file_path || '/' || af.file_name FROM arch_files af
 JOIN work_center wc ON wc.wc_id = af.wc_id AND wc.le_id = af.le_id
     WHERE run_id = $1 AND run_version_id = $2 ORDER BY wc.wc_short_name, ee_id)) as files`,
-    wcConcatFiles: `SELECT  wc.wc_short_name as wc_name, ARRAY_AGG(af.file_path || '/' || af.file_name) as files 
+    wcConcatFiles: `SELECT  wc.wc_id,wc.wc_short_name as wc_name,
+    ARRAY_AGG(af.file_path || '/' || af.file_name) as files 
     FROM arch_files af
     JOIN work_center wc ON wc.wc_id = af.wc_id AND wc.le_id = af.le_id
-    WHERE run_id = $1 AND run_version_id = $2 AND af.wc_id = $3 GROUP BY wc.wc_short_name`,
+    WHERE run_id = $1 AND run_version_id = $2 AND af.wc_id = $3 GROUP BY wc.wc_id, wc.wc_short_name`,
     checkWorkCenters: 'SELECT DISTINCT wc_id FROM arch_files WHERE run_id = $1 AND run_version_id = $2',
     clearRunFromArchive: 'DELETE FROM arch_files WHERE run_id = $1 AND run_version_id = $2 AND doc_type = \'PAY\'',
     checkTasks: `SELECT ct.task_id, ct.run_id, ct.run_version, li.payslip_password, pr.le_id, p.code FROM calc_tasks ct
@@ -268,12 +271,12 @@ GROUP BY ss_h_d_m LIMIT 1)::text
 WHEN field = 'uranterm1' THEN (SELECT REPLACE((SELECT REPLACE(tag_translation, 
 '{1}',(SELECT le_name FROM legal_entity WHERE le_id = $5)) 
 FROM tags_translation WHERE tag_id = 65 AND language_id = 
-(SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{2}', (SELECT to_char(SUM(co.amount),
+(SELECT leg_language FROM ee_id_le WHERE ee_id = $4)), '{2}', (SELECT TRIM(both ' ' from(SELECT to_char(SUM(co.amount),
  '999,999.' || repeat('9', pw.amount_format_decimals)) 
 from calculation_output co
 JOIN payslip_wt pw ON pw.wt_id = co.wt_id
 where co.wt_id = 146 AND co.payslip_id = $1
-AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )) LIMIT 1)
+AND run_id = $2 AND run_version = $3 GROUP BY pw.amount_format_decimals )))) LIMIT 1)
 
 WHEN field = 'uranterm2' THEN (SELECT REPLACE((SELECT tag_translation FROM tags_translation WHERE tag_id = 66
 AND language_id = 
@@ -410,6 +413,8 @@ WHEN field = 'ee_name' THEN (SELECT CASE WHEN last_name2 IS NOT NULL THEN
                 last_name || ' ' || last_name2 || ', ' || first_name 
                 ELSE last_name || ' ' || first_name END FROM ee_id_universal_data WHERE ee_id = 76 AND 
                 ($8 BETWEEN TO_CHAR(from_date, 'YYYY MM') AND TO_CHAR(to_date, 'YYYY MM')))
+
+WHEN field = 'logo'
 
 WHEN field = 'address_line1_ee' THEN (SELECT DISTINCT ad.address_line1 FROM address ad 
 JOIN ee_addresses ea ON ea.payslip_address_id = ad.address_id 
