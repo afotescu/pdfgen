@@ -3,3 +3,5 @@ pdfs
 .idea
 tmp
 .DS_Store
+logo.*
+build
