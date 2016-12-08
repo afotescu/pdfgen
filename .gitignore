@@ -4,3 +4,4 @@ pdfs
 tmp
 .DS_Store
 logo.*
+build

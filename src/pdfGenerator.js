@@ -9,9 +9,9 @@ const transformation = {
     proportional: true,
 };
 
-const generatePDF = (filePath, data, logo) => {
+const generatePDF = (filePath, info, logo) => {
     const pdfWriter = hummus.createWriter(path.join(filePath));
-
+    const data = Object.assign({}, info);
     const fonts = {
         normal: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Regular.ttf')),
         bold: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Bold.ttf')),
@@ -83,17 +83,31 @@ const generatePDF = (filePath, data, logo) => {
                     );
                 } else {
                     result = data[i].field.replace(/.{130}\S*\s+/g, '$&@').split(/\s+@/);
+
                     for (let j = 0; j < result.length; j += 1) {
                         yPos -= 10;
-                        helpers.printText(
-                            content,
-                            fonts[data[i].font],
-                            Number(data[i].size),
-                            result[j],
-                            Number(data[i].position_x),
-                            yPos,
-                            (j !== result.length - 1)
-                        );
+
+                        if (j !== result.length - 1) {
+                            helpers.printText(
+                                content,
+                                fonts[data[i].font],
+                                Number(data[i].size),
+                                result[j],
+                                Number(data[i].position_x),
+                                yPos,
+                                true,
+                            );
+                        } else {
+                            helpers.printText(
+                                content,
+                                fonts[data[i].font],
+                                Number(data[i].size),
+                                result[j],
+                                Number(data[i].position_x),
+                                yPos,
+                                false,
+                            );
+                        }
                     }
                 }
             } else if (data[i].position_x) {

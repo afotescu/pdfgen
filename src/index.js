@@ -9,11 +9,10 @@ import { format } from 'util';
 import helpers from './helpers';
 import Timer from './timer';
 import config from './config';
-import query from './sql';
 import pdf from './pdfGenerator';
 
 const MOVE_LEFT = new Buffer('1b5b3130303044', 'hex').toString();
-const MOVE_UP = new Buffer('1b5b3141', 'hex').toString();
+// const MOVE_UP = new Buffer('1b5b3141', 'hex').toString();
 const CLEAR_LINE = new Buffer('1b5b304b', 'hex').toString();
 
 let db = new Pg({ promiseLib: Promise });
@@ -25,6 +24,9 @@ const rl = readline.createInterface({
 });
 Promise.promisifyAll(mkdirp);
 Promise.promisifyAll(fs);
+
+const wrtArch = `INSERT INTO arch_files(ee_id, run_id, run_version_id, wc_id, le_id, contract_id,
+                    file_name, file_path, doc_type) VALUES `;
 
 process.on('uncaughtException', (err) => {
     console.log(err.message);
@@ -57,7 +59,7 @@ app.on('idle', () => {
         // readline.clearLine();
         // readline.cursorTo(0);
         i = (i + 1) % 4;
-        db.oneOrNone(query.checkTasks)
+        db.oneOrNone(helpers.sqlFromFile(path.join(__dirname, 'sql', 'checkTasks.sql')))
             .then((task) => {
                 if (task) {
                     console.log(`${MOVE_LEFT + CLEAR_LINE}Task found. Processing data.`);
@@ -78,15 +80,17 @@ app.on('processData', (task) => {
     const folders = [];
     let generateWcPdfs = false;
     let arrOfGeneralData = null;
-    let writeToArchiveQuery = query.writeToArchive;
+    let writeToArchiveQuery = wrtArch;
     const imgPath = path.join(__dirname, 'logo.jpg');
     console.log('Please wait...');
-    db.oneOrNone(query.getLeImage, task.le_id)
+    db.oneOrNone(helpers.sqlFromFile(path.join(__dirname, 'sql', 'getLeImage.sql')), task.le_id)
         .then((data) => {
-            fs.writeFileAsync(imgPath, data.picture.toString('binary'), 'base64')
+            fs.writeFileAsync(imgPath, data.picture.toString('binary'), 'base64');
         })
-        .then(() => db.none(query.clearRunFromArchive, [task.run_id, task.run_version]))
-        .then(() => db.any(query.getConfigurationData, [task.task_id]))
+        .then(() => db.none(helpers.sqlFromFile(path.join(__dirname, 'sql', 'clearRunFromArchive.sql')),
+            [task.run_id, task.run_version]))
+        .then(() => db.any(helpers.sqlFromFile(path.join(__dirname, 'sql', 'getConfigurationData.sql')),
+            [task.task_id]))
         .then((results) => {
             arrOfGeneralData = results;
             const arrOfFolders = [];
@@ -121,17 +125,16 @@ app.on('processData', (task) => {
                     ${results[i].wc_id}, ${results[i].le_id}, ${results[i].contract_id},
                     '${fileName}', '${folderRelativePath}', 'PAY'),`;
                 }
-
             }
             return Promise.all(arrOfFolders);
         })
         .then(() => {
             const arrOfPdfData = [];
             for (let i = 0; i < arrOfGeneralData.length; i += 1) {
-                arrOfPdfData.push(db.any(query.test,
+                arrOfPdfData.push(db.any(helpers.sqlFromFile(path.join(__dirname, 'sql', 'getPdfData.sql')),
                     [arrOfGeneralData[i].payslip_id, arrOfGeneralData[i].run_id, arrOfGeneralData[i].run_version,
                         arrOfGeneralData[i].ee_id, arrOfGeneralData[i].le_id, arrOfGeneralData[i].payslip_layout_id,
-                        arrOfGeneralData[i].wc_id, task.code, arrOfGeneralData[i].contract_id]));
+                        arrOfGeneralData[i].wc_id, task.code, arrOfGeneralData[i].ee_contract]));
             }
             return Promise.all(arrOfPdfData);
         })
@@ -142,27 +145,31 @@ app.on('processData', (task) => {
             return Promise.resolve();
         })
         .then(() => db.none(writeToArchiveQuery))
-        .then(() => db.oneOrNone(query.leConcatFiles, [task.run_id, task.run_version]))
+        .then(() => db.oneOrNone(helpers.sqlFromFile(path.join(__dirname, 'sql', 'leConcatFiles.sql')),
+            [task.run_id, task.run_version]))
         .then((files) => {
             const payslipName = 'PAY_run%s_ver%s.pdf';
             pdf.concatPDFs(path.join(`le_${task.le_id}`, task.code, format(payslipName,
                 helpers.leftpad(task.run_id.toString(), 7, 0),
                 helpers.leftpad(task.run_version.toString(), 7, 0))
             ), files.files, task.payslip_password);
-            writeToArchiveQuery = query.writeToArchive;
+            writeToArchiveQuery = wrtArch;
             writeToArchiveQuery += `(NULL,${task.run_id}, ${task.run_version}, NULL, ${task.le_id}, NULL,
             '${format(payslipName,
                 helpers.leftpad(task.run_id.toString(), 7, 0),
                 helpers.leftpad(task.run_version.toString(), 7, 0))}', 
                 '${path.join(`le_${task.le_id}`, task.code)}', 'PAY')`;
-            return db.any(query.checkWorkCenters, [task.run_id, task.run_version]);
+            return db.any(helpers.sqlFromFile(path.join(__dirname, 'sql', 'checkWorkCenters.sql')),
+                [task.run_id, task.run_version]);
         })
         .then((wcs) => {
             if (wcs.length > 1) {
                 generateWcPdfs = true;
                 const arrOfWcsFiles = [];
                 for (let i = 0; i < wcs.length; i += 1) {
-                    arrOfWcsFiles.push(db.oneOrNone(query.wcConcatFiles, [task.run_id, task.run_version, wcs[i].wc_id]));
+                    arrOfWcsFiles.push(db.oneOrNone(helpers.sqlFromFile(
+                        path.join(__dirname, 'sql', 'wcConcatFiles.sql')),
+                        [task.run_id, task.run_version, wcs[i].wc_id]));
                 }
                 return Promise.all(arrOfWcsFiles);
             }
@@ -188,7 +195,7 @@ app.on('processData', (task) => {
             }
         })
         .then(() => db.none(writeToArchiveQuery))
-        .then(() => db.none(query.closeTask, [task.task_id]))
+        .then(() => db.none(helpers.sqlFromFile(path.join(__dirname, 'sql', 'closeTask.sql')), [task.task_id]))
         .then(() => {
             console.log('Task for run_id %s and run_version %s is done', task.run_id, task.run_version);
             console.log('Going back for searching tasks\n');
@@ -202,43 +209,43 @@ app.on('processData', (task) => {
 
 
 // Testing all data from the tasks
-app.on('testAllData', (task) => {
-    console.time('generated in');
-    db.any(query.getConfigurationData, [task])
-        .then((data) => {
-            for (let i = 0; i < data.length; i += 1) {
-                db.any(query.test,
-                    [data[i].payslip_id, data[i].run_id, data[i].run_version, data[i].ee_id, data[i].le_id,
-                        data[i].payslip_layout_id, data[i].wc_id])
-                    .then((result) => {
-                        console.log('------------->', i);
-                        generate(`test${i}.pdf`, result);
-                    })
-                    .catch((err) => {
-                        console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', i);
-                        console.log(err.message);
-                    });
-            }
-            console.timeEnd('generated in');
-        })
-        .catch((err) => {
-            console.log(err.message);
-            process.exit();
-        });
-});
+// app.on('testAllData', (task) => {
+//     console.time('generated in');
+//     db.any(query.getConfigurationData, [task])
+//         .then((data) => {
+//             for (let i = 0; i < data.length; i += 1) {
+//                 db.any(query.test,
+//                     [data[i].payslip_id, data[i].run_id, data[i].run_version, data[i].ee_id, data[i].le_id,
+//                         data[i].payslip_layout_id, data[i].wc_id])
+//                     .then((result) => {
+//                         console.log('------------->', i);
+//                         generate(`test${i}.pdf`, result);
+//                     })
+//                     .catch((err) => {
+//                         console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', i);
+//                         console.log(err.message);
+//                     });
+//             }
+//             console.timeEnd('generated in');
+//         })
+//         .catch((err) => {
+//             console.log(err.message);
+//             process.exit();
+//         });
+// });
 
 // Test the data
-app.on('testData', (task) => {
-    console.time('generated in');
-    db.any(query.testFixed)
-        .then((results) => {
-            generate(`generate.pdf`, results);
-            console.timeEnd('generated in');
-        })
-        .catch((err) => {
-            console.log(err.message);
-            process.exit();
-        });
-});
+// app.on('testData', (task) => {
+//     console.time('generated in');
+//     db.any(query.testFixed)
+//         .then((results) => {
+//             generate(`generate.pdf`, results);
+//             console.timeEnd('generated in');
+//         })
+//         .catch((err) => {
+//             console.log(err.message);
+//             process.exit();
+//         });
+// });
 
 app.emit('idle');
