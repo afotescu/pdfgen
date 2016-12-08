@@ -11,7 +11,7 @@ const transformation = {
 
 const generatePDF = (filePath, info, logo) => {
     const pdfWriter = hummus.createWriter(path.join(filePath));
-    const data = Object.assign({}, info);
+    const data = info.slice();
     const fonts = {
         normal: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Regular.ttf')),
         bold: pdfWriter.getFontForFile(path.join(__dirname, './fonts', 'OpenSans-Bold.ttf')),
@@ -56,6 +56,21 @@ const generatePDF = (filePath, info, logo) => {
                     Number(data[i].size),
                     data[i].field,
                     helpers.alignRight(
+                        fonts[data[i].font],
+                        Number(data[i].size),
+                        data[i].field,
+                        Number(data[i].position_x)
+                    ),
+                    Number(data[i].position_y),
+                    false,
+                );
+            } else if (data[i].alignment === 'center' && data[i].position_x) {
+                helpers.printText(
+                    content,
+                    fonts[data[i].font],
+                    Number(data[i].size),
+                    data[i].field,
+                    helpers.alignCenter(
                         fonts[data[i].font],
                         Number(data[i].size),
                         data[i].field,
