@@ -1,7 +1,6 @@
 import Promise from 'bluebird';
 import Pg from 'pg-promise';
 import { EventEmitter } from 'events';
-import readline from 'readline';
 import mkdirp from 'mkdirp';
 import fs from 'fs';
 import path from 'path';
@@ -11,17 +10,9 @@ import Timer from './timer';
 import config from './config';
 import pdf from './pdfGenerator';
 
-const MOVE_LEFT = new Buffer('1b5b3130303044', 'hex').toString();
-// const MOVE_UP = new Buffer('1b5b3141', 'hex').toString();
-const CLEAR_LINE = new Buffer('1b5b304b', 'hex').toString();
-
 let db = new Pg({ promiseLib: Promise });
 db = db(config.connectionString);
 const app = new EventEmitter();
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
 Promise.promisifyAll(mkdirp);
 Promise.promisifyAll(fs);
 
@@ -33,43 +24,20 @@ process.on('uncaughtException', (err) => {
     app.emit('idle');
 });
 
-rl.on('line', (line) => {
-    switch (line) {
-        case 'uptime':
-            console.log(new Date(1000 * process.uptime()).toISOString().substr(11, 8));
-            break;
-        case 'test':
-            app.emit('testData');
-            break;
-        case 'exit':
-            console.log('Shutting down the application.');
-            process.exit();
-            break;
-        default:
-            process.stdout.write('');
-            break;
-    }
-});
 // Main event which will check every second the database for tasks
 app.on('idle', () => {
-    const dot = '.';
-    let i = 0;
     const checkTasks = new Timer(() => {
         checkTasks.stop();
-        // readline.clearLine();
-        // readline.cursorTo(0);
-        i = (i + 1) % 4;
         db.oneOrNone(helpers.sqlFromFile(path.join(__dirname, 'sql', 'checkTasks.sql')))
             .then((task) => {
                 if (task) {
-                    console.log(`${MOVE_LEFT + CLEAR_LINE}Task found. Processing data.`);
+                    console.log(`Task found. Processing data.`);
                     return app.emit('processData', task);
                 }
-                process.stdout.write(`${MOVE_LEFT + CLEAR_LINE}Waiting for tasks${dot.repeat(i)}`);
                 return checkTasks.start();
             })
             .catch((err) => {
-                console.log(err.message);
+                console.error(err.message);
                 process.exit();
             });
     }, 1000);
@@ -202,50 +170,9 @@ app.on('processData', (task) => {
             return app.emit('idle');
         })
         .catch((err) => {
-            console.log(err.message);
+            console.error(err.message);
             process.exit();
         });
 });
-
-
-// Testing all data from the tasks
-// app.on('testAllData', (task) => {
-//     console.time('generated in');
-//     db.any(query.getConfigurationData, [task])
-//         .then((data) => {
-//             for (let i = 0; i < data.length; i += 1) {
-//                 db.any(query.test,
-//                     [data[i].payslip_id, data[i].run_id, data[i].run_version, data[i].ee_id, data[i].le_id,
-//                         data[i].payslip_layout_id, data[i].wc_id])
-//                     .then((result) => {
-//                         console.log('------------->', i);
-//                         generate(`test${i}.pdf`, result);
-//                     })
-//                     .catch((err) => {
-//                         console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', i);
-//                         console.log(err.message);
-//                     });
-//             }
-//             console.timeEnd('generated in');
-//         })
-//         .catch((err) => {
-//             console.log(err.message);
-//             process.exit();
-//         });
-// });
-
-// Test the data
-// app.on('testData', (task) => {
-//     console.time('generated in');
-//     db.any(query.testFixed)
-//         .then((results) => {
-//             generate(`generate.pdf`, results);
-//             console.timeEnd('generated in');
-//         })
-//         .catch((err) => {
-//             console.log(err.message);
-//             process.exit();
-//         });
-// });
 
 app.emit('idle');
